@@ -962,16 +962,30 @@ let prevGoalMet=false;
 function switchM(i,dir='left'){curIdx=i;renderNav();document.getElementById('page-content').className=dir==='left'?'page':'page-left';renderTab();saveState();sfx.whoosh()}
 function addMonth(){unlocked.push(nextM(unlocked[unlocked.length-1]));curIdx=unlocked.length-1;renderNav();renderTab();saveState();sfx.pop()}
 function switchTab(tab,el){
-  curTab=tab;document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));el.classList.add('active');
-  document.getElementById('page-content').className='page';renderTab();sfx.tick();
+  curTab=tab;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(el)el.classList.add('active');
+  else{
+    // Find the matching nav item if no element passed
+    const navItems=document.querySelectorAll('.nav-item');
+    const tabOrder=['dashboard','track','invest','history'];
+    const idx=tabOrder.indexOf(tab);
+    if(idx>=0&&navItems[idx])navItems[idx].classList.add('active');
+  }
+  document.getElementById('page-content').className='page';
+  renderTab();sfx.tick();
 }
 function renderTab(){
   const m=unlocked[curIdx];
-  document.getElementById('hdr-sub').textContent=`// ${mlabel(m)} · fiscal_period.active`;
+  const subEl=document.getElementById('hdr-sub');
+  if(subEl)subEl.textContent=`// ${mlabel(m)} · fiscal_period.active`;
+  const pc=document.getElementById('page-content');
+  if(!pc)return;
   if(curTab==='dashboard')renderDashboard();
   else if(curTab==='track')renderTrack();
   else if(curTab==='invest')renderInvest();
   else if(curTab==='history')renderHistory();
+  else renderDashboard();
 }
 
 // CORPORATE SATIRE COPY
@@ -1016,11 +1030,11 @@ function renderDashboard(){
   </div>
   <div class="daily-quote">${getDailyQuote()}</div>
   <div class="kpi-grid">
-    <div class="kpi"><div class="kpi-label">// total income</div><div class="kpi-val" style="color:var(--neon)">${fmt(totalIncome)}</div><div class="kpi-sub">take-home</div></div>
+    <div class="kpi"><div class="kpi-label">// total income</div><div class="kpi-val" style="color:#ff5722">${fmt(totalIncome)}</div><div class="kpi-sub">take-home</div></div>
     <div class="kpi"><div class="kpi-label">// budgeted</div><div class="kpi-val">${fmt(estSpend)}</div><div class="kpi-sub">projected spend</div></div>
-    <div class="kpi"><div class="kpi-label">// actual spend</div><div class="kpi-val" style="color:${anyAct?'var(--text)':'var(--text3)'}">${anyAct?fmt(actSpend):'null'}</div>${deltaHTML}</div>
-    <div class="kpi"><div class="kpi-label">// liabilities</div><div class="kpi-val" style="color:${debt>0?'var(--red)':'var(--text3)'}">${debt>0?fmt(debt):'null'}</div><div class="kpi-sub">debt & dues</div></div>
-    <div class="kpi kpi-wide"><div class="kpi-label">// net surplus</div><div class="kpi-val" style="color:${surplus>0?'var(--green)':'var(--red)'};font-size:22px">${fmt(surplus)}</div><div class="kpi-sub">${!isNaN(rate)?rate+'% savings rate · proj. '+fmt(Math.round(avg*12))+'/yr':''}</div></div>
+    <div class="kpi"><div class="kpi-label">// actual spend</div><div class="kpi-val" style="color:${anyAct?'#f0f0ff':'#44445a'}">${anyAct?fmt(actSpend):'null'}</div>${deltaHTML}</div>
+    <div class="kpi"><div class="kpi-label">// liabilities</div><div class="kpi-val" style="color:${debt>0?'#f87171':'#44445a'}">${debt>0?fmt(debt):'null'}</div><div class="kpi-sub">debt & dues</div></div>
+    <div class="kpi kpi-wide"><div class="kpi-label">// net surplus</div><div class="kpi-val" style="color:${surplus>0?'#34d399':'#f87171'};font-size:22px">${fmt(surplus)}</div><div class="kpi-sub">${!isNaN(rate)?rate+'% savings rate · proj. '+fmt(Math.round(avg*12))+'/yr':'awaiting data'}</div></div>
   </div>
   <div class="goal-card">
     <div class="goal-top"><span class="goal-label">// savings_goal.target</span><div class="goal-input-wrap"><span>₹</span><input type="number" placeholder="30000" value="${savingsGoal||''}" oninput="onGoalChg(this.value)"></div></div>
@@ -1121,8 +1135,8 @@ function renderInvest(){
   const investTotal=(md.invest||[]).reduce((s,r)=>s+(parseFloat(r.amt)||0),0);
   const allTotal=unlocked.reduce((s,m)=>{const d=getMD(mkey(m));return s+(d.invest||[]).reduce((ss,r)=>ss+(parseFloat(r.amt)||0),0)},0);
   let h=`<div class="kpi-grid">
-    <div class="kpi"><div class="kpi-label">// this month</div><div class="kpi-val" style="color:var(--green)">${investTotal>0?fmt(investTotal):'null'}</div><div class="kpi-sub">capital deployed</div></div>
-    <div class="kpi"><div class="kpi-label">// all time</div><div class="kpi-val" style="color:var(--neon)">${allTotal>0?fmt(allTotal):'null'}</div><div class="kpi-sub">total invested</div></div>
+    <div class="kpi"><div class="kpi-label">// this month</div><div class="kpi-val" style="color:#34d399">${investTotal>0?fmt(investTotal):'null'}</div><div class="kpi-sub">capital deployed</div></div>
+    <div class="kpi"><div class="kpi-label">// all time</div><div class="kpi-val" style="color:#ff5722">${allTotal>0?fmt(allTotal):'null'}</div><div class="kpi-sub">total invested</div></div>
   </div>
   <div class="insight insight-green" style="margin-bottom:12px"><div class="insight-icon">▸</div><div class="insight-text"><strong>capital allocation unit</strong><span>// log your SIPs, MFs, stocks. it all counts toward the grind.</span></div></div>`;
   h+=`<div class="sec-hdr"><div class="sec-hdr-left"><span class="sec-title">investments</span><span class="sec-tag tag-green">// SIP · MF · stocks</span></div></div>`;
