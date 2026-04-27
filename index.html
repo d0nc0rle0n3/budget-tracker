@@ -913,6 +913,70 @@ function calcMonth(m){
   return{totalIncome,actSpend,estSpend,debt,invest,surplus,rate,anyAct,spendUsed};
 }
 
+function calcStreak(){
+  let streak=0;
+  for(let i=unlocked.length-1;i>=0;i--){
+    const c=calcMonth(unlocked[i]);
+    if(!c.anyAct)continue;
+    if(savingsGoal>0&&c.surplus>=savingsGoal)streak++;
+    else if(savingsGoal===0&&c.rate>=20)streak++;
+    else break;
+  }
+  return streak;
+}
+
+function calcScore(m){
+  const c=calcMonth(m);if(!c.anyAct)return null;
+  let score=50;
+  if(c.rate>=30)score+=30;else if(c.rate>=20)score+=22;else if(c.rate>=10)score+=12;else if(c.rate>=0)score+=4;else score-=15;
+  if(savingsGoal>0&&c.surplus>=savingsGoal)score+=15;
+  else if(savingsGoal>0)score+=Math.round((c.surplus/savingsGoal)*8);
+  const md=getMD(mkey(m));const ar=allRows();
+  let under=0,total=0;
+  ar.forEach(r=>{if(md.actuals[r.id]!==undefined){total++;if(parseFloat(md.actuals[r.id])<=r.est)under++}});
+  if(total)score+=Math.round((under/total)*15);
+  return Math.max(0,Math.min(100,score));
+}
+
+const dailyQuotes=['// budgeting: the art of saying no to your future self\'s problems','// every rupee saved is a tiny act of rebellion against capitalism','// compound interest is the 8th wonder. you\'re welcome, einstein','// your future self is either thanking you or judging you. choose wisely.','// "i\'ll start saving next month" — you, every month','// being broke is a vibe. being broke and tracking it? entrepreneur.','// money can\'t buy happiness but it can buy peace and that\'s arguably better','// the stock market is just legalized gambling but with extra steps','// inflation is just the universe\'s way of telling you to invest','// your bank account is small but your dreams are smaller. relatable.','// remember: the best time to start was yesterday. second best is today.','// chai over starbucks. always.','// minimum balance penalty walked so your bank could buy a yacht','// "passive income" is just income for people who already have money','// your salary called. it left.'];
+function getDailyQuote(){const day=Math.floor(Date.now()/(1000*60*60*24));return dailyQuotes[day%dailyQuotes.length]}
+
+function keepAlive(){
+  const lastPing=localStorage.getItem('last_ping');
+  const now=Date.now();
+  if(lastPing&&(now-parseInt(lastPing))<24*60*60*1000)return;
+  try{supa.from('budget_data').select('id').limit(1).then(()=>{localStorage.setItem('last_ping',now.toString())})}catch(e){}
+}
+
+function checkAutoBackup(){
+  if(!currentUser)return;
+  const lastBackup=localStorage.getItem('last_backup_'+currentUser.id);
+  const now=Date.now();
+  const daysSince=lastBackup?(now-parseInt(lastBackup))/(1000*60*60*24):999;
+  if(daysSince>=30){
+    setTimeout(()=>{
+      showToast('it\'s been a month — backup downloaded for safekeeping','success','💾');
+      autoExportBackup();
+      localStorage.setItem('last_backup_'+currentUser.id,now.toString());
+    },4000);
+  }
+}
+
+function autoExportBackup(){
+  let rows=[['month','category','item','budgeted','actual','diff']];
+  unlocked.forEach(m=>{
+    const md=getMD(mkey(m));const ar=allRows();const ml=mlabel(m);
+    if(!hasData(mkey(m)))return;
+    ar.forEach(r=>{const act=md.actuals[r.id]!==undefined?md.actuals[r.id]:'';rows.push([ml,'expense',r.name,r.est,act,act!==''?act-r.est:''])});
+    (md.oti||[]).forEach(r=>rows.push([ml,'income',r.label||'',0,r.amt||'','']));
+    (md.debt||[]).forEach(r=>rows.push([ml,'debt',r.label||'',0,r.amt||'','']));
+    (md.invest||[]).forEach(r=>rows.push([ml,'investment',r.label||'',0,r.amt||'','']));
+  });
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(rows.map(r=>r.join(',')).join('\n'));
+  a.download='rupee_exe_full_backup_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
+
 // TOAST
 function showToast(msg,type='',icon=''){
   const wrap=document.getElementById('toast-wrap');const t=document.createElement('div');
