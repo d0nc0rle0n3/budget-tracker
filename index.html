@@ -311,7 +311,8 @@ async function saveState(){
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
     const payload={cfg,mdata,unlocked,curIdx};
-    await supa.from('budget_data').upsert({id:'main',data:payload,updated_at:new Date().toISOString()});
+    const{data,error}=await supa.from('budget_data').upsert({id:'main',data:payload,updated_at:new Date().toISOString()});
+    console.log('SAVE result:',data,'ERROR:',error);
   },800);
 }
 
