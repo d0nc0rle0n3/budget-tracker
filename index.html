@@ -809,10 +809,16 @@ function checkNewMonth(){
 }
 
 // ── INIT ──────────────────────────────────────────────────
-setTimeout(()=>{
-  document.getElementById('splash').classList.add('hide');
-  setTimeout(()=>document.getElementById('splash').style.display='none',400);
-},1400);
+// Check session on load and show correct screen
+supa.auth.getSession().then(({data:{session}})=>{
+  setTimeout(()=>{
+    document.getElementById('splash').classList.add('hide');
+    setTimeout(()=>document.getElementById('splash').style.display='none',400);
+    if(!session){
+      document.getElementById('auth-screen').classList.add('show');
+    }
+  },1200);
+});
 </script>
 </body>
 </html>
