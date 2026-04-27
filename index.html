@@ -981,11 +981,19 @@ function renderTab(){
   if(subEl)subEl.textContent=`// ${mlabel(m)} · fiscal_period.active`;
   const pc=document.getElementById('page-content');
   if(!pc)return;
-  if(curTab==='dashboard')renderDashboard();
-  else if(curTab==='track')renderTrack();
-  else if(curTab==='invest')renderInvest();
-  else if(curTab==='history')renderHistory();
-  else renderDashboard();
+  // Clear page content first
+  pc.innerHTML='';
+  pc.className='page';
+  try{
+    if(curTab==='dashboard')renderDashboard();
+    else if(curTab==='track')renderTrack();
+    else if(curTab==='invest')renderInvest();
+    else if(curTab==='history')renderHistory();
+    else renderDashboard();
+  }catch(e){
+    console.error('renderTab error in',curTab,':',e);
+    pc.innerHTML=`<div style="padding:2rem;text-align:center;color:var(--text2);font-family:'Space Mono',monospace"><div style="font-size:32px;margin-bottom:12px">⚠️</div><div>// render_error</div><div style="font-size:11px;color:var(--text3);margin-top:8px">${e.message}</div></div>`;
+  }
 }
 
 // CORPORATE SATIRE COPY
