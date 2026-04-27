@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Budget Tracker</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font-sans,system-ui,sans-serif);background:var(--color-background-tertiary);color:var(--color-text-primary);min-height:100vh;font-size:14px;line-height:1.5}
@@ -301,8 +302,29 @@ function renderNav(){
     return `<button class="${c}" onclick="switchM(${i})">${mlabel(m)}</button>`;
   }).join('')+`<button class="m-btn m-add" onclick="addMonth()" title="Add next month">+</button>`;
 }
-function switchM(i){curIdx=i;function saveState(){try{localStorage.setItem('bt_cfg',JSON.stringify(cfg));localStorage.setItem('bt_mdata',JSON.stringify(mdata));localStorage.setItem('bt_unlocked',JSON.stringify(unlocked));localStorage.setItem('bt_curIdx',String(curIdx))}catch(e){}}
-function loadState(){try{const c=localStorage.getItem('bt_cfg');if(c)cfg=JSON.parse(c);const m=localStorage.getItem('bt_mdata');if(m)mdata=JSON.parse(m);const u=localStorage.getItem('bt_unlocked');if(u)unlocked=JSON.parse(u);const i=localStorage.getItem('bt_curIdx');if(i)curIdx=parseInt(i)||0}catch(e){}}
+function switchM(i){curIdx=i;const SUPA_URL='https://ythrdbiwkvanrjbmhujx.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0aHJkYml3a3ZhbnJqYm1odWp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyODE3NzIsImV4cCI6MjA5Mjg1Nzc3Mn0.619sj9HIkvyFgT7OIH7AKTaqVYihHjR3nPeC8dLoDzs';
+const supa=supabase.createClient(SUPA_URL,SUPA_KEY);
+
+let saveTimer=null;
+async function saveState(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(async()=>{
+    const payload={cfg,mdata,unlocked,curIdx};
+    await supa.from('budget_data').upsert({id:'main',data:payload,updated_at:new Date().toISOString()});
+  },800);
+}
+
+async function loadState(){
+  const{data,error}=await supa.from('budget_data').select('data').eq('id','main').single();
+  if(data&&data.data&&Object.keys(data.data).length){
+    const d=data.data;
+    if(d.cfg)cfg=d.cfg;
+    if(d.mdata)mdata=d.mdata;
+    if(d.unlocked)unlocked=d.unlocked;
+    if(d.curIdx!==undefined)curIdx=d.curIdx;
+  }
+}
 
 const _onChg=onChg;
 onChg=function(){_onChg();saveState()};
@@ -325,8 +347,7 @@ switchM=function(i){_switchM(i);saveState()};
 const _saveSettings=saveSettings;
 saveSettings=function(){_saveSettings();saveState()};
 
-loadState();
-renderNav();renderMain();recalc()}
+loadState().then(()=>{renderNav();renderMain()});recalc()}
 function addMonth(){unlocked.push(nextM(unlocked[unlocked.length-1]));curIdx=unlocked.length-1;renderNav();renderMain();recalc()}
 
 // MAIN RENDER
