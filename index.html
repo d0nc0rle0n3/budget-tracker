@@ -10,12 +10,43 @@
 <meta name="theme-color" content="#0a0a0f">
 <title>rupee.exe</title>
 
-<!-- App icons (inline SVG → data URI for portability) -->
-<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%230a0a0f'/><circle cx='140' cy='40' r='60' fill='%23ff5722' opacity='0.18'/><text x='50%25' y='52%25' font-family='Menlo,Monaco,monospace' font-size='42' font-weight='700' fill='%23ff5722' text-anchor='middle' dominant-baseline='middle' style='filter:drop-shadow(0 0 12px %23ff5722)'>₹</text><text x='50%25' y='75%25' font-family='Menlo,Monaco,monospace' font-size='18' font-weight='700' fill='%23ff5722' text-anchor='middle' dominant-baseline='middle'>.exe</text></svg>">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%230a0a0f'/><text x='50%25' y='58%25' font-family='Menlo,Monaco,monospace' font-size='100' font-weight='700' fill='%23ff5722' text-anchor='middle' dominant-baseline='middle'>₹</text></svg>">
+<!-- App icon: PNG generated dynamically via canvas (works on iOS) -->
+<link id="apple-touch-icon" rel="apple-touch-icon">
+<link id="favicon" rel="icon" type="image/png">
+
+<script>
+// Generate the icon PNG at runtime so iOS picks it up correctly
+(function(){
+  function makeIcon(size){
+    const c=document.createElement('canvas');
+    c.width=size;c.height=size;
+    const ctx=c.getContext('2d');
+    // Dark background
+    ctx.fillStyle='#0a0a0f';
+    ctx.fillRect(0,0,size,size);
+    // Subtle orange glow in top right
+    const grad=ctx.createRadialGradient(size*0.78,size*0.22,0,size*0.78,size*0.22,size*0.6);
+    grad.addColorStop(0,'rgba(255,87,34,0.35)');
+    grad.addColorStop(1,'rgba(255,87,34,0)');
+    ctx.fillStyle=grad;
+    ctx.fillRect(0,0,size,size);
+    // Big ₹ symbol
+    ctx.fillStyle='#ff5722';
+    ctx.font='700 '+(size*0.62)+'px Menlo, Monaco, monospace';
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.shadowColor='rgba(255,87,34,0.6)';
+    ctx.shadowBlur=size*0.08;
+    ctx.fillText('₹',size/2,size*0.52);
+    return c.toDataURL('image/png');
+  }
+  document.getElementById('apple-touch-icon').href=makeIcon(180);
+  document.getElementById('favicon').href=makeIcon(64);
+})();
+</script>
 
 <!-- Web app manifest for Android / PWA -->
-<link rel="manifest" href="data:application/manifest+json;utf8,{%22name%22:%22rupee.exe%22,%22short_name%22:%22rupee.exe%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%230a0a0f%22,%22theme_color%22:%22%230a0a0f%22,%22orientation%22:%22portrait%22,%22icons%22:[{%22src%22:%22data:image/svg+xml;utf8,<svg xmlns=\\%22http://www.w3.org/2000/svg\\%22 viewBox=\\%220 0 512 512\\%22><rect width=\\%22512\\%22 height=\\%22512\\%22 rx=\\%22112\\%22 fill=\\%22%230a0a0f\\%22/><text x=\\%2250%25\\%22 y=\\%2258%25\\%22 font-family=\\%22Menlo,monospace\\%22 font-size=\\%22280\\%22 font-weight=\\%22700\\%22 fill=\\%22%23ff5722\\%22 text-anchor=\\%22middle\\%22 dominant-baseline=\\%22middle\\%22>%E2%82%B9</text></svg>%22,%22sizes%22:%22512x512%22,%22type%22:%22image/svg+xml%22}]}">
+<link rel="manifest" href="data:application/manifest+json;charset=utf-8;base64,ewogICJuYW1lIjogInJ1cGVlLmV4ZSIsCiAgInNob3J0X25hbWUiOiAicnVwZWUuZXhlIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMwYTBhMGYiLAogICJ0aGVtZV9jb2xvciI6ICIjMGEwYTBmIiwKICAib3JpZW50YXRpb24iOiAicG9ydHJhaXQiCn0=">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -235,6 +266,21 @@ body::after{content:'';position:fixed;top:-20%;right:-10%;width:60vw;height:60vw
 .tag-purple{background:var(--neon-glow);color:var(--neon);border-color:rgba(255,87,34,.25)}
 .tag-red{background:var(--red-bg);color:var(--red);border-color:rgba(248,113,113,.2)}
 .tag-gray{background:var(--bg3);color:var(--text2);border-color:var(--border)}
+
+/* STREAK + SCORE PILL */
+.top-pills{display:flex;gap:8px;margin-bottom:12px}
+.top-pill{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;display:flex;align-items:center;gap:8px;transition:all .2s}
+.top-pill.streak{border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.05)}
+.top-pill.score-good{border-color:rgba(52,211,153,.25);background:rgba(52,211,153,.05)}
+.top-pill.score-mid{border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.05)}
+.top-pill.score-bad{border-color:rgba(248,113,113,.25);background:rgba(248,113,113,.05)}
+.tp-icon{font-size:18px;flex-shrink:0}
+.tp-text{flex:1;min-width:0}
+.tp-label{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:'Space Mono',monospace;margin-bottom:1px}
+.tp-val{font-size:14px;font-weight:700;font-family:'Space Mono',monospace;letter-spacing:-.01em}
+
+/* DAILY QUOTE */
+.daily-quote{background:var(--bg2);border:1px solid var(--border);border-left:2px solid var(--neon);border-radius:var(--radius-sm);padding:9px 14px;margin-bottom:12px;font-size:11px;font-family:'Space Mono',monospace;color:var(--text2);line-height:1.6;font-style:italic}
 .copy-btn{font-size:10px;color:var(--text3);cursor:pointer;background:none;border:none;font-family:'Space Mono',monospace;transition:color .15s;padding:0;letter-spacing:.04em}
 .copy-btn:hover{color:var(--neon)}
 
@@ -387,6 +433,28 @@ body::after{content:'';position:fixed;top:-20%;right:-10%;width:60vw;height:60vw
 .empty-state .e-sub{font-size:12px;color:var(--text3);font-family:'Space Mono',monospace}
 
 @media(min-width:600px){.kpi-grid{grid-template-columns:repeat(3,1fr)}.kpi-wide{grid-column:auto}.c4{grid-template-columns:2fr 1fr 1fr 1fr}}
+
+/* FAB */
+.fab{position:fixed;right:16px;bottom:calc(var(--nav-h) + var(--safe-bot) + 12px);width:52px;height:52px;background:linear-gradient(135deg,var(--neon),var(--neon2));border:none;border-radius:50%;color:#fff;font-size:24px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(255,87,34,.4),0 0 0 1px rgba(255,87,34,.3);z-index:50;transition:all .2s;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.fab:hover{transform:scale(1.05)}
+.fab:active{transform:scale(.92)}
+.fab svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* QUICK ADD MODAL */
+.qa-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;padding:0}
+.qa-overlay.open{opacity:1;pointer-events:all}
+.qa-modal{background:var(--bg2);border:1px solid var(--border2);border-bottom:none;border-radius:20px 20px 0 0;width:100%;max-width:500px;padding:1.25rem;padding-bottom:calc(1.25rem + var(--safe-bot));transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.qa-overlay.open .qa-modal{transform:translateY(0)}
+.qa-grip{width:36px;height:4px;background:var(--border2);border-radius:100px;margin:0 auto .75rem}
+.qa-title{font-size:14px;font-weight:700;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.04em;margin-bottom:1rem;color:var(--neon)}
+.qa-row{margin-bottom:10px}
+.qa-row label{display:block;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;font-family:'Space Mono',monospace}
+.qa-row select,.qa-row input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-xs);padding:10px 12px;font-size:14px;color:var(--text);font-family:'Space Mono',monospace;transition:all .15s;outline:none}
+.qa-row select:focus,.qa-row input:focus{border-color:var(--neon);box-shadow:0 0 0 2px var(--neon-glow)}
+.qa-actions{display:flex;gap:8px;margin-top:1rem}
+.qa-btn{flex:1;padding:11px;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;font-family:'Space Mono',monospace;letter-spacing:.04em;transition:all .2s;border:1px solid;text-transform:lowercase}
+.qa-btn-primary{background:linear-gradient(135deg,var(--neon),var(--neon2));border-color:var(--neon);color:#fff}
+.qa-btn-secondary{background:transparent;border-color:var(--border);color:var(--text2)}
 </style>
 </head>
 <body>
@@ -476,6 +544,31 @@ body::after{content:'';position:fixed;top:-20%;right:-10%;width:60vw;height:60vw
       <span class="nav-label">history</span><div class="nav-dot"></div>
     </button>
   </nav>
+</div>
+
+<!-- QUICK ADD FAB -->
+<button class="fab" id="fab" onclick="openQuickAdd()" style="display:none">
+  <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
+
+<!-- QUICK ADD MODAL -->
+<div class="qa-overlay" id="qa-overlay" onclick="if(event.target===this)closeQuickAdd()">
+  <div class="qa-modal">
+    <div class="qa-grip"></div>
+    <div class="qa-title">// quick_add()</div>
+    <div class="qa-row">
+      <label>// category</label>
+      <select id="qa-cat"></select>
+    </div>
+    <div class="qa-row">
+      <label>// amount (₹)</label>
+      <input type="number" id="qa-amt" placeholder="0" inputmode="numeric">
+    </div>
+    <div class="qa-actions">
+      <button class="qa-btn qa-btn-secondary" onclick="closeQuickAdd()">cancel</button>
+      <button class="qa-btn qa-btn-primary" onclick="quickAddSave()">add to actuals</button>
+    </div>
+  </div>
 </div>
 
 <div class="overlay" id="overlay" onclick="closeSettings()"></div>
@@ -757,7 +850,8 @@ async function handleGoogle(){const{error}=await supa.auth.signInWithOAuth({prov
 async function handleLogout(){
   await supa.auth.signOut();currentUser=null;cfg=getDefaultCfg();mdata={};
   unlocked=[{mi:new Date().getMonth(),y:new Date().getFullYear()}];curIdx=0;savingsGoal=0;
-  document.getElementById('app').classList.remove('show');document.getElementById('auth-screen').classList.add('show');closeSettings();
+  document.getElementById('app').classList.remove('show');document.getElementById('fab').style.display='none';
+  document.getElementById('auth-screen').classList.add('show');closeSettings();
 }
 
 let appInitialized=false;
@@ -916,6 +1010,11 @@ function renderDashboard(){
   const tL=unlocked.map(m=>mlabel(m)),tD=unlocked.map(m=>calcMonth(m).surplus);
 
   document.getElementById('page-content').innerHTML=`
+  <div class="top-pills">
+    <div class="top-pill streak"><div class="tp-icon">🔥</div><div class="tp-text"><div class="tp-label">// streak</div><div class="tp-val" style="color:#fbbf24">${calcStreak()} ${calcStreak()===1?'month':'months'}</div></div></div>
+    <div class="top-pill ${(()=>{const s=calcScore(unlocked[curIdx]);if(s===null)return'';return s>=70?'score-good':s>=40?'score-mid':'score-bad'})()}"><div class="tp-icon">${(()=>{const s=calcScore(unlocked[curIdx]);if(s===null)return'📊';return s>=70?'⭐':s>=40?'📈':'📉'})()}</div><div class="tp-text"><div class="tp-label">// month_score</div><div class="tp-val" style="color:${(()=>{const s=calcScore(unlocked[curIdx]);if(s===null)return'var(--text3)';return s>=70?'#34d399':s>=40?'#fbbf24':'#f87171'})()}">${(()=>{const s=calcScore(unlocked[curIdx]);return s===null?'—':s+'/100'})()}</div></div></div>
+  </div>
+  <div class="daily-quote">${getDailyQuote()}</div>
   <div class="kpi-grid">
     <div class="kpi"><div class="kpi-label">// total income</div><div class="kpi-val" style="color:var(--neon)">${fmt(totalIncome)}</div><div class="kpi-sub">take-home</div></div>
     <div class="kpi"><div class="kpi-label">// budgeted</div><div class="kpi-val">${fmt(estSpend)}</div><div class="kpi-sub">projected spend</div></div>
@@ -1140,6 +1239,31 @@ function checkNewMonth(){
   if(!unlocked.find(m=>m.mi===mi&&m.y===y))showToast(`new fiscal period detected: ${MN[mi]}. initiating budget protocol.`,'','📅');
 }
 
+// ── QUICK ADD ─────────────────────────────────────────────
+function openQuickAdd(){
+  const sel=document.getElementById('qa-cat');
+  sel.innerHTML=allRows().map(r=>`<option value="${r.id}">${r.name} (₹${r.est.toLocaleString('en-IN')} budget)</option>`).join('');
+  document.getElementById('qa-amt').value='';
+  document.getElementById('qa-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('qa-amt').focus(),200);
+  sfx.tick();
+}
+function closeQuickAdd(){document.getElementById('qa-overlay').classList.remove('open')}
+function quickAddSave(){
+  const cat=document.getElementById('qa-cat').value;
+  const amt=parseFloat(document.getElementById('qa-amt').value);
+  if(!amt||amt<=0){sfx.warn();showToast('enter a valid amount','warn','⚠️');return}
+  const md=getMD(curKey());
+  const existing=md.actuals[cat]||0;
+  md.actuals[cat]=existing+amt;
+  closeQuickAdd();
+  if(curTab==='track')renderTrack();
+  else if(curTab==='dashboard')renderDashboard();
+  renderNav();saveState();sfx.chaching();
+  const row=allRows().find(r=>r.id===cat);
+  showToast(`+${fmt(amt)} added to ${row?.name||'category'}`,'success','✓');
+}
+
 // INIT
 async function init(){
   clearInterval(splashInterval);
@@ -1168,7 +1292,6 @@ function showSplashThen(fn){
 function showApp(){
   showSplashThen(()=>{
     document.getElementById('auth-screen').classList.remove('show');
-    // Check if onboarding needed
     const hasOnboarded=currentUser&&localStorage.getItem('onboarded_'+currentUser.id);
     const hasAnyData=Object.keys(mdata).length>0||cfg.takeHome!==100000;
     if(!hasOnboarded&&!hasAnyData){
@@ -1176,7 +1299,9 @@ function showApp(){
     }else{
       if(currentUser)localStorage.setItem('onboarded_'+currentUser.id,'1');
       document.getElementById('app').classList.add('show');
+      document.getElementById('fab').style.display='flex';
       renderNav();renderTab();initSwipe();checkA2HS();checkNewMonth();
+      keepAlive();checkAutoBackup();
     }
   });
 }
