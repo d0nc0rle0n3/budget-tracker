@@ -6,8 +6,16 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="rupee.exe">
+<meta name="application-name" content="rupee.exe">
 <meta name="theme-color" content="#0a0a0f">
 <title>rupee.exe</title>
+
+<!-- App icons (inline SVG → data URI for portability) -->
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%230a0a0f'/><circle cx='140' cy='40' r='60' fill='%23ff5722' opacity='0.18'/><text x='50%25' y='52%25' font-family='Menlo,Monaco,monospace' font-size='42' font-weight='700' fill='%23ff5722' text-anchor='middle' dominant-baseline='middle' style='filter:drop-shadow(0 0 12px %23ff5722)'>₹</text><text x='50%25' y='75%25' font-family='Menlo,Monaco,monospace' font-size='18' font-weight='700' fill='%23ff5722' text-anchor='middle' dominant-baseline='middle'>.exe</text></svg>">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%230a0a0f'/><text x='50%25' y='58%25' font-family='Menlo,Monaco,monospace' font-size='100' font-weight='700' fill='%23ff5722' text-anchor='middle' dominant-baseline='middle'>₹</text></svg>">
+
+<!-- Web app manifest for Android / PWA -->
+<link rel="manifest" href="data:application/manifest+json;utf8,{%22name%22:%22rupee.exe%22,%22short_name%22:%22rupee.exe%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%230a0a0f%22,%22theme_color%22:%22%230a0a0f%22,%22orientation%22:%22portrait%22,%22icons%22:[{%22src%22:%22data:image/svg+xml;utf8,<svg xmlns=\\%22http://www.w3.org/2000/svg\\%22 viewBox=\\%220 0 512 512\\%22><rect width=\\%22512\\%22 height=\\%22512\\%22 rx=\\%22112\\%22 fill=\\%22%230a0a0f\\%22/><text x=\\%2250%25\\%22 y=\\%2258%25\\%22 font-family=\\%22Menlo,monospace\\%22 font-size=\\%22280\\%22 font-weight=\\%22700\\%22 fill=\\%22%23ff5722\\%22 text-anchor=\\%22middle\\%22 dominant-baseline=\\%22middle\\%22>%E2%82%B9</text></svg>%22,%22sizes%22:%22512x512%22,%22type%22:%22image/svg+xml%22}]}">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -322,6 +330,56 @@ body::after{content:'';position:fixed;top:-20%;right:-10%;width:60vw;height:60vw
 .toggle-knob{position:absolute;top:2px;left:2px;width:16px;height:16px;background:var(--text3);border-radius:50%;transition:all .25s}
 .toggle.on .toggle-knob{left:18px;background:var(--neon)}
 
+/* ONBOARDING */
+#onboarding{position:fixed;inset:0;background:var(--bg);z-index:400;display:none;flex-direction:column;padding:1.5rem;padding-top:calc(1.5rem + var(--safe-top));padding-bottom:calc(1.5rem + var(--safe-bot));animation:fadeIn .3s ease}
+#onboarding.show{display:flex}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.ob-progress{display:flex;gap:6px;margin-bottom:2rem}
+.ob-dot{flex:1;height:3px;background:var(--bg4);border-radius:100px;transition:background .3s}
+.ob-dot.done{background:var(--neon);box-shadow:0 0 8px var(--neon-glow)}
+.ob-dot.active{background:var(--neon);box-shadow:0 0 12px var(--neon-glow)}
+.ob-step{flex:1;display:flex;flex-direction:column;justify-content:center;animation:obIn .35s ease}
+@keyframes obIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.ob-emoji{font-size:48px;text-align:center;margin-bottom:1rem;animation:bounce .5s ease}
+@keyframes bounce{0%{transform:scale(.5)}60%{transform:scale(1.1)}100%{transform:scale(1)}}
+.ob-title{font-size:24px;font-weight:700;text-align:center;margin-bottom:8px;letter-spacing:-.02em;font-family:'Space Mono',monospace}
+.ob-title span{color:var(--neon)}
+.ob-sub{font-size:13px;color:var(--text2);text-align:center;margin-bottom:2rem;font-family:'Space Mono',monospace;line-height:1.6;max-width:340px;margin-left:auto;margin-right:auto}
+.ob-content{max-width:380px;margin:0 auto;width:100%}
+.ob-input-wrap{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;margin-bottom:1rem}
+.ob-input-label{font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.ob-input{width:100%;background:transparent;border:none;font-size:28px;font-weight:700;color:var(--neon);font-family:'Space Mono',monospace;outline:none;text-align:left;padding:4px 0}
+.ob-input::placeholder{color:var(--text3)}
+.ob-hint{font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;text-align:center;margin-top:.5rem}
+.ob-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.1rem;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px}
+.ob-card-icon{width:36px;height:36px;background:var(--neon-glow);border:1px solid var(--neon);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ob-card-icon svg{width:18px;height:18px;stroke:var(--neon);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ob-card-text{flex:1;min-width:0}
+.ob-card-title{font-size:13px;font-weight:700;margin-bottom:2px;font-family:'Space Mono',monospace}
+.ob-card-sub{font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;line-height:1.5}
+.ob-platform-tabs{display:flex;background:var(--bg3);border-radius:var(--radius-sm);padding:3px;margin-bottom:10px;border:1px solid var(--border)}
+.ob-platform-tab{flex:1;padding:7px;border:none;background:none;border-radius:7px;font-size:11px;font-weight:600;color:var(--text3);cursor:pointer;font-family:'Space Mono',monospace}
+.ob-platform-tab.active{background:var(--bg4);color:var(--neon)}
+.ob-instructions{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;font-size:12px;color:var(--text2);font-family:'Space Mono',monospace;line-height:1.8;margin-bottom:1rem}
+.ob-instructions ol{padding-left:1.2rem;margin:0}
+.ob-instructions li{margin-bottom:4px}
+.ob-instructions strong{color:var(--neon);font-weight:700}
+.ob-checkbox-row{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 14px;cursor:pointer;margin-bottom:1rem;transition:border-color .15s}
+.ob-checkbox-row:hover{border-color:var(--border2)}
+.ob-checkbox{width:18px;height:18px;border:1.5px solid var(--border3);border-radius:5px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.ob-checkbox.checked{background:var(--neon);border-color:var(--neon);box-shadow:0 0 12px var(--neon-glow)}
+.ob-checkbox.checked::after{content:'✓';color:#fff;font-size:12px;font-weight:700}
+.ob-checkbox-label{font-size:13px;font-family:'Space Grotesk',sans-serif}
+.ob-actions{display:flex;gap:8px;margin-top:auto;padding-top:1.5rem}
+.ob-btn{flex:1;padding:12px;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;font-family:'Space Mono',monospace;letter-spacing:.04em;transition:all .2s;border:1px solid;text-transform:lowercase}
+.ob-btn-primary{background:linear-gradient(135deg,var(--neon),var(--neon2));border-color:var(--neon);color:#fff}
+.ob-btn-primary:hover{opacity:.9}
+.ob-btn-primary:active{transform:scale(.98)}
+.ob-btn-secondary{background:transparent;border-color:var(--border);color:var(--text2)}
+.ob-btn-secondary:hover{border-color:var(--border2);color:var(--text)}
+.ob-skip{text-align:center;margin-top:1rem;font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;cursor:pointer;background:none;border:none;width:100%;padding:8px}
+.ob-skip:hover{color:var(--neon)}
+
 /* EMPTY STATE */
 .empty-state{text-align:center;padding:3rem 1rem}
 .empty-state .e-icon{font-size:36px;margin-bottom:12px}
@@ -370,6 +428,14 @@ body::after{content:'';position:fixed;top:-20%;right:-10%;width:60vw;height:60vw
 </div>
 
 <div id="toast-wrap"></div>
+
+<!-- ONBOARDING -->
+<div id="onboarding">
+  <div class="ob-progress" id="ob-progress">
+    <div class="ob-dot active"></div><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot"></div>
+  </div>
+  <div class="ob-step" id="ob-step-content"></div>
+</div>
 <div id="a2hs">
   <div class="a2hs-text"><strong>add to homescreen</strong><span>tap share → add to home screen. do it. do it now.</span></div>
   <button class="a2hs-close" onclick="dismissA2HS()">ok fine</button>
@@ -441,7 +507,136 @@ const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 const supa=supabase.createClient(SURL,SKEY);
 let currentUser=null,saveTimer=null;
 
-// ── SOUND ENGINE ──────────────────────────────────────────
+// ── ONBOARDING ────────────────────────────────────────────
+let obStep=0;let obIncome='';let obAddedToHome=false;let obPlatform='ios';
+function detectPlatform(){
+  const ua=navigator.userAgent;
+  if(/iphone|ipad|ipod/i.test(ua))return'ios';
+  if(/android/i.test(ua))return'android';
+  return'desktop';
+}
+const obSteps=[
+  {render:()=>`
+    <div class="ob-content">
+      <div class="ob-emoji">👋</div>
+      <div class="ob-title">welcome to <span>rupee.exe</span></div>
+      <div class="ob-sub">your money's new manager (unpaid intern). let's get you set up in 30 seconds.</div>
+    </div>
+    <div class="ob-actions"><button class="ob-btn ob-btn-primary" onclick="obNext()">let's go →</button></div>
+    <button class="ob-skip" onclick="obFinish(true)">skip onboarding</button>
+  `},
+  {render:()=>`
+    <div class="ob-content">
+      <div class="ob-emoji">💰</div>
+      <div class="ob-title">how much do you make?</div>
+      <div class="ob-sub">// monthly take-home, after tax. we'll use this to track everything.</div>
+      <div class="ob-input-wrap">
+        <div class="ob-input-label">// monthly_income.value (₹)</div>
+        <input type="number" id="ob-income-input" class="ob-input" placeholder="100000" value="${obIncome}" oninput="obIncome=this.value">
+      </div>
+      <div class="ob-hint">don't worry, you can change this anytime in settings</div>
+    </div>
+    <div class="ob-actions">
+      <button class="ob-btn ob-btn-secondary" onclick="obBack()">← back</button>
+      <button class="ob-btn ob-btn-primary" onclick="obNextIncome()">continue →</button>
+    </div>
+  `},
+  {render:()=>`
+    <div class="ob-content">
+      <div class="ob-emoji">🎯</div>
+      <div class="ob-title">how it works</div>
+      <div class="ob-sub">// 4 tabs. that's the whole app.</div>
+      <div class="ob-card">
+        <div class="ob-card-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <div class="ob-card-text"><div class="ob-card-title">// overview</div><div class="ob-card-sub">your monthly snapshot — income, spend, surplus, savings rate, charts.</div></div>
+      </div>
+      <div class="ob-card">
+        <div class="ob-card-icon"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <div class="ob-card-text"><div class="ob-card-title">// track</div><div class="ob-card-sub">log actuals against your budget. add bonuses, debts, notes.</div></div>
+      </div>
+      <div class="ob-card">
+        <div class="ob-card-icon"><svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+        <div class="ob-card-text"><div class="ob-card-title">// invest</div><div class="ob-card-sub">log your SIPs, mutual funds, stocks. watch your wealth grow.</div></div>
+      </div>
+      <div class="ob-card">
+        <div class="ob-card-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        <div class="ob-card-text"><div class="ob-card-title">// history</div><div class="ob-card-sub">all your past months at a glance. tap any to revisit.</div></div>
+      </div>
+    </div>
+    <div class="ob-actions">
+      <button class="ob-btn ob-btn-secondary" onclick="obBack()">← back</button>
+      <button class="ob-btn ob-btn-primary" onclick="obNext()">got it →</button>
+    </div>
+  `},
+  {render:()=>{
+    const isStandalone=window.navigator.standalone||window.matchMedia('(display-mode: standalone)').matches;
+    if(isStandalone){
+      return`
+      <div class="ob-content">
+        <div class="ob-emoji">✨</div>
+        <div class="ob-title">you're all set!</div>
+        <div class="ob-sub">// already running as an app. nice.<br>tap below to start your first month.</div>
+      </div>
+      <div class="ob-actions"><button class="ob-btn ob-btn-primary" onclick="obFinish()">launch app →</button></div>`;
+    }
+    const platform=obPlatform;
+    const instructions={
+      ios:`<ol><li>tap the <strong>share button</strong> at the bottom of safari</li><li>scroll down → tap <strong>"Add to Home Screen"</strong></li><li>tap <strong>"Add"</strong> in the top right</li></ol>`,
+      android:`<ol><li>tap the <strong>⋮ menu</strong> in chrome (top right)</li><li>tap <strong>"Add to Home Screen"</strong></li><li>tap <strong>"Add"</strong> to confirm</li></ol>`,
+      desktop:`<ol><li>look for the <strong>install icon</strong> in your browser's address bar</li><li>or use chrome: <strong>⋮ menu → Install</strong></li><li>or just bookmark this page</li></ol>`
+    };
+    return`
+      <div class="ob-content">
+        <div class="ob-emoji">📱</div>
+        <div class="ob-title">add to home screen</div>
+        <div class="ob-sub">// for the full app experience. opens fullscreen, no browser bars.</div>
+        <div class="ob-platform-tabs">
+          <button class="ob-platform-tab ${platform==='ios'?'active':''}" onclick="obPlatform='ios';renderObStep()">iOS</button>
+          <button class="ob-platform-tab ${platform==='android'?'active':''}" onclick="obPlatform='android';renderObStep()">Android</button>
+          <button class="ob-platform-tab ${platform==='desktop'?'active':''}" onclick="obPlatform='desktop';renderObStep()">Desktop</button>
+        </div>
+        <div class="ob-instructions">${instructions[platform]}</div>
+        <div class="ob-checkbox-row" onclick="obAddedToHome=!obAddedToHome;renderObStep()">
+          <div class="ob-checkbox ${obAddedToHome?'checked':''}"></div>
+          <div class="ob-checkbox-label">i've added it / i'll do it later</div>
+        </div>
+      </div>
+      <div class="ob-actions">
+        <button class="ob-btn ob-btn-secondary" onclick="obBack()">← back</button>
+        <button class="ob-btn ob-btn-primary" onclick="obFinish()" ${!obAddedToHome?'disabled style="opacity:.4;cursor:not-allowed"':''}>finish →</button>
+      </div>`;
+  }}
+];
+
+function renderObStep(){
+  const dots=document.querySelectorAll('#ob-progress .ob-dot');
+  dots.forEach((d,i)=>{d.className='ob-dot'+(i<obStep?' done':i===obStep?' active':'')});
+  document.getElementById('ob-step-content').innerHTML=obSteps[obStep].render();
+}
+function obNext(){if(obStep<obSteps.length-1){obStep++;renderObStep();sfx.tick()}}
+function obBack(){if(obStep>0){obStep--;renderObStep();sfx.tick()}}
+function obNextIncome(){
+  const v=parseFloat(document.getElementById('ob-income-input')?.value);
+  if(!v||v<=0){showToast('enter a valid income to continue','warn','⚠️');sfx.warn();return}
+  obIncome=v;cfg.takeHome=v;obNext();
+}
+async function obFinish(skipped=false){
+  document.getElementById('onboarding').classList.remove('show');
+  if(!skipped&&obIncome)cfg.takeHome=parseFloat(obIncome);
+  // mark onboarded in localStorage
+  if(currentUser)localStorage.setItem('onboarded_'+currentUser.id,'1');
+  document.getElementById('app').classList.add('show');
+  renderNav();renderTab();initSwipe();checkNewMonth();
+  await saveState();
+  sfx.celebrate();
+  showToast('welcome aboard! let\'s get this bread 🍞','celebrate','🎉');
+}
+
+function startOnboarding(){
+  obStep=0;obIncome='';obAddedToHome=false;obPlatform=detectPlatform();
+  document.getElementById('onboarding').classList.add('show');
+  renderObStep();
+}
 let audioCtx=null;
 let soundEnabled=localStorage.getItem('sound_enabled')==='1';
 function getCtx(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();return audioCtx}
@@ -973,8 +1168,16 @@ function showSplashThen(fn){
 function showApp(){
   showSplashThen(()=>{
     document.getElementById('auth-screen').classList.remove('show');
-    document.getElementById('app').classList.add('show');
-    renderNav();renderTab();initSwipe();checkA2HS();checkNewMonth();
+    // Check if onboarding needed
+    const hasOnboarded=currentUser&&localStorage.getItem('onboarded_'+currentUser.id);
+    const hasAnyData=Object.keys(mdata).length>0||cfg.takeHome!==100000;
+    if(!hasOnboarded&&!hasAnyData){
+      startOnboarding();
+    }else{
+      if(currentUser)localStorage.setItem('onboarded_'+currentUser.id,'1');
+      document.getElementById('app').classList.add('show');
+      renderNav();renderTab();initSwipe();checkA2HS();checkNewMonth();
+    }
   });
 }
 
