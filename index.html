@@ -809,15 +809,40 @@ function expandState(d){
   }
 }
 
+let lastSaveAt=0;
+let pendingSave=false;
+const DEBOUNCE_MS=600;
+const MAX_WAIT_MS=2000;
+
+async function doSave(){
+  if(!currentUser||pendingSave)return;
+  pendingSave=true;
+  setBadge('syncing...');
+  const{error}=await supa.from('budget_data').upsert({
+    id:currentUser.id,
+    user_id:currentUser.id,
+    data:compactState(),
+    updated_at:new Date().toISOString()
+  });
+  pendingSave=false;
+  lastSaveAt=Date.now();
+  if(error){setBadge('sync failed');sfx.error()}
+  else{setBadge('synced ✓');sfx.chaching()}
+  setTimeout(()=>{if(Date.now()-lastSaveAt>=2000)setBadge('')},2500);
+}
+
 async function saveState(){
-  if(!currentUser)return;clearTimeout(saveTimer);
-  saveTimer=setTimeout(async()=>{
-    setBadge('syncing...');
-    const{error}=await supa.from('budget_data').upsert({id:currentUser.id,user_id:currentUser.id,data:compactState(),updated_at:new Date().toISOString()});
-    if(error){setBadge('sync failed');sfx.error()}
-    else{setBadge('synced ✓');sfx.chaching()}
-    setTimeout(()=>setBadge(''),2500);
-  },1500);
+  if(!currentUser)return;
+  setBadge('pending...');
+  clearTimeout(saveTimer);
+  // Force-save if we haven't synced in MAX_WAIT_MS, even mid-typing
+  const elapsed=Date.now()-lastSaveAt;
+  if(elapsed>=MAX_WAIT_MS&&!pendingSave){
+    doSave();
+    return;
+  }
+  // Otherwise debounce normally
+  saveTimer=setTimeout(doSave,DEBOUNCE_MS);
 }
 async function loadState(){
   if(!currentUser)return;
