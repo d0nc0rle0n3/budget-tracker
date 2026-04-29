@@ -646,7 +646,7 @@ const obSteps=[
       <div class="ob-sub">// 4 tabs. that's the whole app.</div>
       <div class="ob-card">
         <div class="ob-card-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
-        <div class="ob-card-text"><div class="ob-card-title">// overview</div><div class="ob-card-sub">your monthly snapshot — income, spend, surplus, savings rate, charts.</div></div>
+        <div class="ob-card-text"><div class="ob-card-title">// overview</div><div class="ob-card-sub">your monthly snapshot, income, spend, surplus, savings rate, charts.</div></div>
       </div>
       <div class="ob-card">
         <div class="ob-card-icon"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
@@ -782,7 +782,7 @@ function compactState(){
     if(d.notes&&d.notes.trim())c.n=d.notes.slice(0,500);
     if(Object.keys(c).length)cleanMdata[k]=c;
   }
-  // Compact cfg too — only save if changed from default
+  // Compact cfg too, only save if changed from default
   const defaultCfg=getDefaultCfg();
   const cfgChanged=JSON.stringify(cfg)!==JSON.stringify(defaultCfg);
   const out={u:unlocked.slice(-24),i:Math.min(curIdx,23)};
@@ -809,45 +809,145 @@ function expandState(d){
   }
 }
 
+// ── SAVE STATE ────────────────────────────────────────────
+// Two-layer persistence:
+//  1) localStorage written SYNCHRONOUSLY on every change (zero data loss on refresh)
+//  2) Supabase synced with a small debounce + force-flush on tab hide/unload
 let lastSaveAt=0;
 let pendingSave=false;
-const DEBOUNCE_MS=600;
-const MAX_WAIT_MS=2000;
+let dirty=false;          // true when local state is ahead of cloud
+const DEBOUNCE_MS=250;    // tight debounce so cloud catches up fast
+const MAX_WAIT_MS=1000;   // hard ceiling on debounce delay
 
-async function doSave(){
-  if(!currentUser||pendingSave)return;
+function lsKey(){return currentUser?'rupee_state_'+currentUser.id:null}
+
+function saveLocal(){
+  const k=lsKey();if(!k)return;
+  try{
+    const payload={data:compactState(),savedAt:Date.now()};
+    localStorage.setItem(k,JSON.stringify(payload));
+  }catch(e){console.warn('localStorage save failed',e)}
+}
+
+function loadLocal(){
+  const k=lsKey();if(!k)return null;
+  try{
+    const raw=localStorage.getItem(k);
+    if(!raw)return null;
+    return JSON.parse(raw);
+  }catch(e){return null}
+}
+
+async function doCloudSync(){
+  if(!currentUser||pendingSave||!dirty)return;
   pendingSave=true;
   setBadge('syncing...');
+  const snapshot=compactState();
   const{error}=await supa.from('budget_data').upsert({
     id:currentUser.id,
     user_id:currentUser.id,
-    data:compactState(),
+    data:snapshot,
     updated_at:new Date().toISOString()
   });
   pendingSave=false;
   lastSaveAt=Date.now();
-  if(error){setBadge('sync failed');sfx.error()}
-  else{setBadge('synced ✓');sfx.chaching()}
-  setTimeout(()=>{if(Date.now()-lastSaveAt>=2000)setBadge('')},2500);
+  if(error){
+    setBadge('sync failed · saved locally');
+    sfx.error();
+    // retry shortly so we don't sit in a failed state
+    setTimeout(()=>{if(dirty)doCloudSync()},3000);
+  }else{
+    dirty=false;
+    setBadge('synced ✓');
+    sfx.chaching();
+  }
+  setTimeout(()=>{if(Date.now()-lastSaveAt>=2000&&!dirty)setBadge('')},2500);
 }
 
-async function saveState(){
+// Public save entry point. Always writes locally NOW, debounces cloud sync.
+function saveState(){
   if(!currentUser)return;
-  setBadge('pending...');
+  // 1) Persist locally synchronously, no awaits, no network
+  saveLocal();
+  dirty=true;
+  setBadge('saved locally · syncing...');
+  // 2) Debounce cloud sync, but force-flush if it's been too long
   clearTimeout(saveTimer);
-  // Force-save if we haven't synced in MAX_WAIT_MS, even mid-typing
   const elapsed=Date.now()-lastSaveAt;
   if(elapsed>=MAX_WAIT_MS&&!pendingSave){
-    doSave();
+    doCloudSync();
     return;
   }
-  // Otherwise debounce normally
-  saveTimer=setTimeout(doSave,DEBOUNCE_MS);
+  saveTimer=setTimeout(doCloudSync,DEBOUNCE_MS);
 }
+
+// Best-effort flush via fetch keepalive. Works even when the tab is closing.
+function flushBeacon(){
+  if(!currentUser||!dirty)return;
+  try{
+    const url=SURL+'/rest/v1/budget_data';
+    const body=JSON.stringify({
+      id:currentUser.id,
+      user_id:currentUser.id,
+      data:compactState(),
+      updated_at:new Date().toISOString()
+    });
+    // Need access token for RLS. Pull from Supabase session storage.
+    const sessionRaw=localStorage.getItem('sb-'+SURL.split('//')[1].split('.')[0]+'-auth-token');
+    let accessToken=SKEY;
+    try{const sess=sessionRaw?JSON.parse(sessionRaw):null;if(sess?.access_token)accessToken=sess.access_token}catch(e){}
+    fetch(url,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'apikey':SKEY,
+        'Authorization':'Bearer '+accessToken,
+        'Prefer':'resolution=merge-duplicates'
+      },
+      body,
+      keepalive:true
+    }).catch(()=>{});
+  }catch(e){}
+}
+
+// Flush on tab hide / unload so mobile app-switches don't lose data
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'&&dirty){
+    saveLocal();
+    flushBeacon();
+  }
+});
+window.addEventListener('pagehide',()=>{if(dirty){saveLocal();flushBeacon()}});
+window.addEventListener('beforeunload',()=>{if(dirty){saveLocal();flushBeacon()}});
+
 async function loadState(){
   if(!currentUser)return;
-  const{data}=await supa.from('budget_data').select('data').eq('id',currentUser.id).single();
-  if(data?.data&&Object.keys(data.data).length)expandState(data.data);
+  // 1) Hydrate from localStorage immediately so the UI shows data instantly
+  const local=loadLocal();
+  if(local?.data&&Object.keys(local.data).length){
+    expandState(local.data);
+  }
+  // 2) Fetch cloud data and merge by recency
+  try{
+    const{data}=await supa.from('budget_data').select('data,updated_at').eq('id',currentUser.id).single();
+    if(data?.data&&Object.keys(data.data).length){
+      const cloudTime=data.updated_at?new Date(data.updated_at).getTime():0;
+      const localTime=local?.savedAt||0;
+      // If cloud is newer (or no local), use cloud. Otherwise keep local and push it up.
+      if(!local||cloudTime>=localTime){
+        expandState(data.data);
+        // Refresh local cache with the cloud version
+        try{localStorage.setItem(lsKey(),JSON.stringify({data:data.data,savedAt:cloudTime||Date.now()}))}catch(e){}
+      }else{
+        // Local is newer (e.g. saved offline) - push it up
+        dirty=true;
+        doCloudSync();
+      }
+    }
+  }catch(e){
+    // Cloud fetch failed but we have local data, so we're still good
+    console.warn('cloud load failed, using local',e);
+  }
 }
 
 // AUTH
@@ -863,7 +963,7 @@ async function handleAuth(){
   const email=document.getElementById('auth-email').value.trim();
   const password=document.getElementById('auth-password').value;
   const btn=document.getElementById('auth-submit');
-  if(!email||!password){showAuthError('null pointer exception — fill in the fields');return}
+  if(!email||!password){showAuthError('null pointer exception, fill in the fields');return}
   btn.disabled=true;btn.textContent=authMode==='login'?'authenticating...':'deploying account...';
   document.getElementById('auth-error').classList.remove('show');
   if(authMode==='login'){
@@ -878,8 +978,13 @@ async function handleAuth(){
 }
 async function handleGoogle(){const{error}=await supa.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.href}});if(error)showAuthError(error.message)}
 async function handleLogout(){
+  // Flush any pending changes before signing out
+  if(dirty&&currentUser){saveLocal();await doCloudSync()}
+  const oldKey=lsKey();
   await supa.auth.signOut();currentUser=null;cfg=getDefaultCfg();mdata={};
-  unlocked=[{mi:new Date().getMonth(),y:new Date().getFullYear()}];curIdx=0;savingsGoal=0;
+  unlocked=[{mi:new Date().getMonth(),y:new Date().getFullYear()}];curIdx=0;savingsGoal=0;dirty=false;
+  // Clear this user's local cache so the next person on this device starts clean
+  if(oldKey){try{localStorage.removeItem(oldKey)}catch(e){}}
   document.getElementById('app').classList.remove('show');document.getElementById('fab').style.display='none';
   document.getElementById('auth-screen').classList.add('show');closeSettings();
 }
@@ -963,7 +1068,7 @@ function calcScore(m){
   return Math.max(0,Math.min(100,score));
 }
 
-const dailyQuotes=['// budgeting: the art of saying no to your future self\'s problems','// every rupee saved is a tiny act of rebellion against capitalism','// compound interest is the 8th wonder. you\'re welcome, einstein','// your future self is either thanking you or judging you. choose wisely.','// "i\'ll start saving next month" — you, every month','// being broke is a vibe. being broke and tracking it? entrepreneur.','// money can\'t buy happiness but it can buy peace and that\'s arguably better','// the stock market is just legalized gambling but with extra steps','// inflation is just the universe\'s way of telling you to invest','// your bank account is small but your dreams are smaller. relatable.','// remember: the best time to start was yesterday. second best is today.','// chai over starbucks. always.','// minimum balance penalty walked so your bank could buy a yacht','// "passive income" is just income for people who already have money','// your salary called. it left.'];
+const dailyQuotes=['// budgeting: the art of saying no to your future self\'s problems','// every rupee saved is a tiny act of rebellion against capitalism','// compound interest is the 8th wonder. you\'re welcome, einstein','// your future self is either thanking you or judging you. choose wisely.','// "i\'ll start saving next month", you, every month','// being broke is a vibe. being broke and tracking it? entrepreneur.','// money can\'t buy happiness but it can buy peace and that\'s arguably better','// the stock market is just legalized gambling but with extra steps','// inflation is just the universe\'s way of telling you to invest','// your bank account is small but your dreams are smaller. relatable.','// remember: the best time to start was yesterday. second best is today.','// chai over starbucks. always.','// minimum balance penalty walked so your bank could buy a yacht','// "passive income" is just income for people who already have money','// your salary called. it left.'];
 function getDailyQuote(){const day=Math.floor(Date.now()/(1000*60*60*24));return dailyQuotes[day%dailyQuotes.length]}
 
 function keepAlive(){
@@ -980,7 +1085,7 @@ function checkAutoBackup(){
   const daysSince=lastBackup?(now-parseInt(lastBackup))/(1000*60*60*24):999;
   if(daysSince>=30){
     setTimeout(()=>{
-      showToast('it\'s been a month — backup downloaded for safekeeping','success','💾');
+      showToast('it\'s been a month, backup downloaded for safekeeping','success','💾');
       autoExportBackup();
       localStorage.setItem('last_backup_'+currentUser.id,now.toString());
     },4000);
